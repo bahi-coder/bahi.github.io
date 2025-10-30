@@ -57,11 +57,39 @@
 
     <div id="msg" class="msg"></div>
     <div class="small">
-  Powered by Ing ABBASSI Brahim 
-  <img src="https://upload.wikimedia.org/wikipedia/commons/c/ce/Flag_of_Tunisia.svg" 
-       alt="Drapeau de la Tunisie" 
-       style="width:22px; height:16px; margin-left:6px; vertical-align:middle;">
+  Powered by Ing ABBASSI Ibrahim 
+  <img class="flag" 
+       src="https://upload.wikimedia.org/wikipedia/commons/c/ce/Flag_of_Tunisia.svg" 
+       alt="Drapeau de la Tunisie">
 </div>
+
+<style>
+  .small {
+    margin-top: 10px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .flag {
+    width: 22px;
+    height: 16px;
+    animation: wave 2s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  @keyframes wave {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(3deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(-3deg); }
+    100% { transform: rotate(0deg); }
+  }
+</style>
+
 
   </div>
 
@@ -185,5 +213,6 @@
   </script>
 </body>
 </html>
+
 
 

@@ -1,103 +1,155 @@
 <!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Carte AGR - Sousse</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+#map {
+  height: 85vh;
+  width: 100%;
+}
+.filters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px;
+}
+select {
+  padding: 5px;
+  font-size: 14px;
+}
+.bottom-filters {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.logout {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.logout:hover {
+  background: #d32f2f;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ✅ Vérification du token avant affichage -->
 <script>
-(async ()=>{
-  const TOKEN_KEY="site_token";
-  const SECRET="cle_privee_ultra_simple";
-  function sha256Hex(str){
-    const enc=new TextEncoder().encode(str);
-    return crypto.subtle.digest("SHA-256",enc).then(b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join(""));
+(async () => {
+  const TOKEN_KEY = "site_token";
+  const SECRET = "cle_privee_ultra_simple";
+
+  async function sha256Hex(str) {
+    const enc = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(hash)).map(x => x.toString(16).padStart(2,"0")).join("");
   }
 
   const data = localStorage.getItem(TOKEN_KEY);
-  if(!data){ window.location.href="index.html"; return; }
+  if (!data) {
+    window.location.href = "index.html";
+    return;
+  }
 
-  try{
+  try {
     const token = JSON.parse(atob(data));
     const sig = await sha256Hex(SECRET + "|" + token.exp);
-    if(token.sig !== sig || Date.now() > token.exp){
+    if (token.sig !== sig || Date.now() > token.exp) {
       localStorage.removeItem(TOKEN_KEY);
-      window.location.href="index.html";
+      window.location.href = "index.html";
     }
-  }catch(e){
+  } catch (e) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href="index.html";
+    window.location.href = "index.html";
   }
 })();
 </script>
 
+<!-- Filtres -->
+<div class="filters">
+  <select id="deleg"><option value="">-- Délégation --</option></select>
+  <select id="sect"><option value="">-- Secteur --</option></select>
+  <select id="micro"><option value="">-- Microzone --</option></select>
+  <select id="agr"><option value="">-- AGR --</option></select>
+</div>
 
-<html><head><meta charset='utf-8' />
-<title>Carte AGR</title>
-<link rel='stylesheet' href='https://unpkg.com/leaflet/dist/leaflet.css' />
-<link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css' />
-<link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css' />
-<style>
-body{margin:0;font-family:sans-serif;}
-#map{height:85vh;width:100%;}
-.filters{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:10px;}
-select{padding:3px;}
-.bottom-filters{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);background:#fff;padding:5px;border-radius:5px;}
-</style></head><body>
-<div class='filters'>
-<select id='deleg'><option value=''>-- Délégation --</option></select>
-<select id='sect'><option value=''>-- Secteur --</option></select>
-<select id='micro'><option value=''>-- Microzone --</option></select>
-<select id='agr'><option value=''>-- AGR --</option></select>
+<!-- Carte -->
+<div id="map"></div>
+
+<!-- Filtres du bas -->
+<div class="bottom-filters">
+  <select id="genre">
+    <option value="">-- Genre --</option>
+    <option>Homme</option>
+    <option>Femme</option>
+  </select>
+  <select id="age">
+    <option value="">-- Âge --</option>
+    <option value="0">Jeune</option>
+    <option value="1">Âgé</option>
+  </select>
 </div>
-<div id='map'></div>
-<div class='bottom-filters'>
-<select id='genre'><option value=''>-- Genre --</option><option>Homme</option><option>Femme</option></select>
-<select id='age'><option value=''>-- Age --</option><option value='0'>Age</option><option value='1'>Jeune</option></select>
-</div>
-<script src='https://unpkg.com/leaflet/dist/leaflet.js'></script>
-<script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
-<script src='https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js'></script>
+
+<!-- Bouton de déconnexion -->
+<button class="logout" onclick="logout()">Déconnexion</button>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
 <script>
-var map=L.map('map').setView([34,9],7);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: 'Powered by <img src="https://upload.wikimedia.org/wikipedia/commons/c/ce/Flag_of_Tunisia.svg" style="width:20px;height:14px;vertical-align:middle;margin-right:4px;"> ING ABBASSI BRAHIM'}).addTo(map);
-var mc=L.markerClusterGroup(),all=[];
-e:'1'});
+// === Initialisation de la carte ===
+var map = L.map('map').setView([35.83, 10.64], 9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: 'Powered by <img src="https://upload.wikimedia.org/wikipedia/commons/c/ce/Flag_of_Tunisia.svg" style="width:20px;height:14px;vertical-align:middle;margin-right:4px;"> Ing. ABBASSI BRAHIM'
+}).addTo(map);
 
+// === Pas de markers pour le moment ===
+var mc = L.markerClusterGroup();
+map.addLayer(mc);
 
+// === Initialisation vide des filtres ===
+function fillSelect(sel, options) {
+  sel.innerHTML = '<option value="">-- Tous --</option>';
+  options.forEach(v => {
+    let o = document.createElement('option');
+    o.text = v; o.value = v;
+    sel.appendChild(o);
+  });
+}
 
+fillSelect(document.getElementById('deleg'), new Set());
+fillSelect(document.getElementById('sect'), new Set());
+fillSelect(document.getElementById('micro'), new Set());
+fillSelect(document.getElementById('agr'), new Set());
 
+// === Fonction de déconnexion ===
+function logout() {
+  localStorage.removeItem("site_token");
+  window.location.href = "index.html";
+}
+</script>
 
-
-if(mc.getLayers().length>0)map.fitBounds(mc.getBounds());
-function fillSelect(sel,set){sel.innerHTML='<option value="">--Tous--</option>';set.forEach(v=>{let o=document.createElement('option');o.text=v;o.value=v;sel.appendChild(o);});}
-var dels=new Set(),agrs=new Set(),genres=new Set(),ages=new Set();
-all.forEach(x=>{dels.add(x.d);agrs.add(x.a);genres.add(x.g);ages.add(x.age=='1'?'Age':'Jeune');});
-fillSelect(deleg,dels);
-fillSelect(agr,agrs);
-fillSelect(genre,genres);
-fillSelect(age,new Set(['Jeune','Age']));
-function fillSect(d){sect.innerHTML='<option value="">--Tous--</option>';let S=new Set();all.forEach(x=>{if(!d||x.d==d)S.add(x.s)});S.forEach(v=>{let o=document.createElement('option');o.text=v;o.value=v;sect.appendChild(o);});fillMicro(d,null);}
-function fillMicro(d,s){micro.innerHTML='<option value="">--Toutes--</option>';let M=new Set();all.forEach(x=>{if((!d||x.d==d)&&(!s||x.s==s))M.add(x.m)});M.forEach(v=>{let o=document.createElement('option');o.text=v;o.value=v;micro.appendChild(o);});}
-function upd(){let d=deleg.value,s=sect.value,m=micro.value,a=agr.value,g=genre.value,aj=age.value;mc.clearLayers();all.forEach(x=>{let ageTxt=(x.age=='0'?'Age':'Jeune');if((!d||x.d==d)&&(!s||x.s==s)&&(!m||x.m==m)&&(!a||x.a==a)&&(!g||x.g==g)&&(!aj||ageTxt==aj))mc.addLayer(x.mk);});if(mc.getLayers().length>0)map.fitBounds(mc.getBounds());}
-deleg.onchange=function(){fillSect(this.value);upd();};
-sect.onchange=function(){fillMicro(deleg.value,this.value);upd();};
-micro.onchange=upd;agr.onchange=upd;genre.onchange=upd;age.onchange=upd;
-var stats=document.createElement('div');
-stats.id='stats';stats.style.position='absolute';
-stats.style.bottom='10px';stats.style.right='10px';
-stats.style.background='rgba(255,255,255,0.9)';
-stats.style.padding='8px';stats.style.borderRadius='6px';stats.style.fontSize='13px';
-stats.innerHTML='Statistiques : 0 point';document.body.appendChild(stats);
-function updateStats(){
-let count=mc.getLayers().length,jeunes=0,ages=0,hommes=0,femmes=0;
-all.forEach(x=>{
-if(mc.hasLayer(x.mk)){
-if(x.age=='0')jeunes++;else ages++;
-if((x.g||'').toLowerCase()=='homme')hommes++;else femmes++;
-}});
-stats.innerHTML='Points affichés : '+count+'<br>Jeunes : '+jeunes+', Ages : '+ages+'<br>Hommes : '+hommes+', Femmes : '+femmes;}
-function upd(){
-let d=deleg.value,s=sect.value,m=micro.value,a=agr.value,g=genre.value,aj=age.value;
-mc.clearLayers();
-all.forEach(x=>{let ageTxt=(x.age=='0'?'Jeune':'Age');
-if((!d||x.d==d)&&(!s||x.s==s)&&(!m||x.m==m)&&(!a||x.a==a)&&(!g||x.g==g)&&(!aj||ageTxt==aj))mc.addLayer(x.mk);});
-if(mc.getLayers().length>0)map.fitBounds(mc.getBounds());updateStats();}
-</script></body></html>
-
-
-
+</body>
+</html>

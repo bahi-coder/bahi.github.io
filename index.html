@@ -1,211 +1,181 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Carte des bénéficiaires - Sousse</title>
-<style>
-  body {
-    margin: 0;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: linear-gradient(135deg, #4CAF50, #2196F3);
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-  }
-  .container {
-    text-align: center;
-    background: rgba(0,0,0,0.45);
-    padding: 36px;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
-    width: 320px;
-  }
-  h1 { font-size: 20px; margin-bottom: 12px; }
-  p { font-size: 14px; margin-bottom: 18px; color: #f0f7ff; }
-  input {
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-    width: 100%;
-    margin-bottom: 10px;
-    box-sizing: border-box;
-  }
-  button {
-    background: #ffeb3b;
-    color: #333;
-    font-size: 16px;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    width: 100%;
-  }
-  .msg { margin-top: 10px; color: #ffe082; font-size: 13px; min-height: 18px; }
-  .small { font-size: 12px; color: rgba(255,255,255,0.8); margin-top:8px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Connexion — Carte Sousse</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #4CAF50, #2196F3);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .box {
+      background: rgba(0,0,0,0.45);
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      width: 340px;
+      text-align: center;
+    }
+    h1 { margin: 0 0 10px 0; font-size: 20px; }
+    p { margin: 0 0 16px 0; font-size: 14px; color: #f0f7ff; }
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #ffeb3b;
+      color: #333;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .msg { margin-top: 12px; min-height: 18px; font-size: 13px; color: #ffe082; }
+    .small { margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.8); }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>IESS — Kairouan</h1>
+  <div class="box">
+    <h1>Programme d’accompagnement — Sousse</h1>
     <p>Accès réservé. Entrez le mot de passe pour afficher la carte interactive.</p>
 
     <input id="pass" type="password" placeholder="Mot de passe" autocomplete="off" />
     <button id="goBtn">🌍 Voir la carte</button>
 
     <div id="msg" class="msg"></div>
-    <div class="small">powred by Ing ABBASSI Brahim</div>
+    <div class="small">Protection légère côté client : empêche la plupart des curieux. Pour une sécurité complète, utiliser une solution serveur.</div>
   </div>
 
-<script>
+  <script>
+    /**************************************************************************
+     * Configuration (modifie si besoin)
+     *
+     * - EXPECTED_HASH : SHA-256 hex du mot de passe choisi (exemple donné plus bas)
+     * - SECRET        : phrase secrète utilisée pour signer le token (doit être
+     *                   identique dans CarteSousse.html)
+     * - TOKEN_KEY     : clé utilisée dans localStorage
+     **************************************************************************/
 
+    const EXPECTED_HASH = "b97649803596ed3f11b1a9d7e5cda20a71d198f96f003da6afbd36f92354a62a";
+    // EXPECTED_HASH correspond au SHA-256 du mot de passe "sousse2025".
+    // Si tu changes le mot de passe, calcule le SHA-256 et remplace cette valeur.
 
-// hash attendu (hex) — NE PAS mettre le mot de passe en clair ici.
-const EXPECTED_HASH = "b97649803596ed3f11b1a9d7e5cda20a71d198f96f003da6afbd36f92354a62a";
+    const SECRET = "une_phrase_secrete_peu_complexe"; // change si tu veux (même valeur dans CarteSousse.html)
+    const TOKEN_KEY = "site_token";
 
-// paramètres limite
-const MAX_ATTEMPTS = 5;
-const LOCK_MINUTES = 5; // durée du blocage après trop d'échecs
+    const MAX_ATTEMPTS = 5;
+    const LOCK_MINUTES = 5; // minutes de verrou après MAX_ATTEMPTS échecs
 
-const passInput = document.getElementById("pass");
-const goBtn = document.getElementById("goBtn");
-const msgDiv = document.getElementById("msg");
-
-function nowMs(){ return Date.now(); }
-
-function getState(){
-  const raw = localStorage.getItem("auth_state");
-  if(!raw) return { attempts: 0, lockedUntil: 0 };
-  try { return JSON.parse(raw); } catch(e){ return { attempts:0, lockedUntil:0 }; }
-}
-function saveState(st){ localStorage.setItem("auth_state", JSON.stringify(st)); }
-
-// convertir ArrayBuffer -> hex string
-function bufToHex(buffer){
-  const bytes = new Uint8Array(buffer);
-  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
-  return hex;
-}
-
-// calcule SHA-256 d'une chaîne (UTF-8) et retourne hex string
-async function sha256Hex(str){
-  const enc = new TextEncoder();
-  const data = enc.encode(str);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return bufToHex(hashBuffer);
-}
-
-function setMessage(text, danger){
-  msgDiv.textContent = text || "";
-  msgDiv.style.color = danger ? "#ffb3b3" : "#ffe082";
-}
-
-// vérifie le verrouillage et affiche temps restant
-function checkLock(){
-  const st = getState();
-  if(st.lockedUntil && st.lockedUntil > nowMs()){
-    const sec = Math.ceil((st.lockedUntil - nowMs())/1000);
-    setMessage(`Trop de tentatives. Réessayez dans ${sec} s.`, true);
-    return true;
-  } else {
-    // si verrou expiré, reset attempts
-    if(st.lockedUntil && st.lockedUntil <= nowMs()){
-      saveState({ attempts: 0, lockedUntil: 0 });
+    // utilitaires
+    function bufToHex(buffer){
+      return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2,'0')).join('');
     }
-    return false;
-  }
-}
+    async function sha256Hex(str){
+      const enc = new TextEncoder();
+      const data = enc.encode(str);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      return bufToHex(hashBuffer);
+    }
 
-goBtn.addEventListener("click", async function(){
-  // désactiver répétition rapide
-  goBtn.disabled = true;
-  setTimeout(()=> goBtn.disabled = false, 800);
+    function nowMs(){ return Date.now(); }
 
-  if(checkLock()) return;
+    function getState(){
+      const raw = localStorage.getItem("auth_state");
+      if(!raw) return { attempts: 0, lockedUntil: 0 };
+      try { return JSON.parse(raw); } catch(e){ return { attempts:0, lockedUntil:0 }; }
+    }
+    function saveState(st){ localStorage.setItem("auth_state", JSON.stringify(st)); }
 
-  const plain = passInput.value || "";
-  if(plain.trim() === ""){
-    setMessage("Entrez le mot de passe.", true);
-    return;
-  }
+    function setMessage(text, danger){
+      const msg = document.getElementById("msg");
+      msg.textContent = text || "";
+      if(danger) msg.style.color = "#ffb3b3"; else msg.style.color = "#ffe082";
+    }
 
-  try {
-    const hash = await sha256Hex(plain);
-    if(hash === EXPECTED_HASH){
-      // succès : reset état et redirection
-      saveState({ attempts: 0, lockedUntil: 0 });
-      <script>
-/*
-  - Vérifie le mot de passe via son hash SHA-256
-  - Si correct, crée un token temporaire signé et le sauvegarde dans localStorage
-  - Redirige vers CarteSousse.html
-*/
-
-const EXPECTED_HASH = "b97649803596ed3f11b1a9d7e5cda20a71d198f96f003da6afbd36f92354a62a"; // hash du mot de passe "sousse2025"
-const SECRET = "une_phrase_secrete_peu_complexe"; // la même phrase à mettre aussi dans CarteSousse.html
-const TOKEN_KEY = "site_token";
-
-function bufToHex(buffer){
-  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function sha256Hex(str){
-  const enc = new TextEncoder();
-  const b = await crypto.subtle.digest("SHA-256", enc.encode(str));
-  return bufToHex(b);
-}
-
-document.getElementById("goBtn").addEventListener("click", async function(){
-  const pass = document.getElementById("pass").value.trim();
-  const msgDiv = document.getElementById("msg");
-
-  if(pass === ""){
-    msgDiv.textContent = "⚠️ Veuillez entrer le mot de passe.";
-    msgDiv.style.color = "#ffb3b3";
-    return;
-  }
-
-  const hash = await sha256Hex(pass);
-  if(hash !== EXPECTED_HASH){
-    msgDiv.textContent = "❌ Mot de passe incorrect.";
-    msgDiv.style.color = "#ffb3b3";
-    return;
-  }
-
-  // ✅ Mot de passe correct → création du token sécurisé
-  const expireMs = Date.now() + 20 * 60 * 1000; // expire dans 20 minutes
-  const sig = await sha256Hex(SECRET + "|" + expireMs);
-  const tokenObj = { user: "admin", exp: expireMs, sig: sig };
-  localStorage.setItem(TOKEN_KEY, btoa(JSON.stringify(tokenObj)));
-
-  // Redirection vers la carte
-  window.location.href = "CarteSousse.html";
-});
-</script>
-
-    } else {
-      // échec : incrémenter tentatives
+    function checkLock(){
       const st = getState();
-      st.attempts = (st.attempts || 0) + 1;
-      if(st.attempts >= MAX_ATTEMPTS){
-        st.lockedUntil = nowMs() + LOCK_MINUTES * 60 * 1000;
-        setMessage(`Mot de passe incorrect. Verrouillage ${LOCK_MINUTES} minutes.`, true);
+      if(st.lockedUntil && st.lockedUntil > nowMs()){
+        const sec = Math.ceil((st.lockedUntil - nowMs())/1000);
+        setMessage(`Trop de tentatives. Réessayez dans ${sec} s.`, true);
+        return true;
       } else {
-        const rest = MAX_ATTEMPTS - st.attempts;
-        setMessage(`Mot de passe incorrect. ${rest} tentative(s) restante(s).`, true);
+        if(st.lockedUntil && st.lockedUntil <= nowMs()){
+          saveState({ attempts: 0, lockedUntil: 0 });
+        }
+        return false;
       }
-      saveState(st);
     }
-  } catch (err){
-    console.error(err);
-    setMessage("Erreur interne. Réessayez.", true);
-  }
-});
-</script>
+
+    // stocker token signé (base64 JSON)
+    function saveToken(tokenObj){
+      localStorage.setItem(TOKEN_KEY, btoa(JSON.stringify(tokenObj)));
+    }
+
+    // gestion du bouton
+    document.getElementById("goBtn").addEventListener("click", async function(){
+      const goBtn = document.getElementById("goBtn");
+      const passInput = document.getElementById("pass");
+      goBtn.disabled = true;
+      setTimeout(()=> goBtn.disabled = false, 700);
+
+      if(checkLock()) return;
+
+      const plain = (passInput.value || "").trim();
+      if(plain === ""){
+        setMessage("⚠️ Veuillez entrer le mot de passe.", true);
+        return;
+      }
+
+      try {
+        // verifier hash du mot de passe
+        const hash = await sha256Hex(plain);
+        if(hash !== EXPECTED_HASH){
+          // echec : incrementer tentatives
+          const st = getState();
+          st.attempts = (st.attempts || 0) + 1;
+          if(st.attempts >= MAX_ATTEMPTS){
+            st.lockedUntil = nowMs() + LOCK_MINUTES * 60 * 1000;
+            setMessage(`Mot de passe incorrect. Verrouillage ${LOCK_MINUTES} minutes.`, true);
+          } else {
+            const rest = MAX_ATTEMPTS - st.attempts;
+            setMessage(`Mot de passe incorrect. ${rest} tentative(s) restante(s).`, true);
+          }
+          saveState(st);
+          return;
+        }
+
+        // mot de passe correct -> creer token signe
+        const expireMs = Date.now() + 20 * 60 * 1000; // 20 minutes
+        const sig = await sha256Hex(SECRET + "|" + expireMs);
+        const tokenObj = { user: "admin", exp: expireMs, sig: sig };
+        saveToken(tokenObj);
+
+        // reinitialiser et rediriger
+        saveState({ attempts: 0, lockedUntil: 0 });
+        window.location.href = "CarteSousse.html";
+      } catch (err){
+        console.error(err);
+        setMessage("Erreur interne. Réessayez.", true);
+      }
+    });
+
+    // Si tu veux, tu peux aussi permettre Enter pour soumettre
+    document.getElementById("pass").addEventListener("keyup", function(e){
+      if(e.key === "Enter"){ document.getElementById("goBtn").click(); }
+    });
+  </script>
 </body>
 </html>
-
-
-

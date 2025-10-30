@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Carte des bénéficiaires - Sousse</title>
 <style>
   body {
@@ -17,73 +17,144 @@
   }
   .container {
     text-align: center;
-    background: rgba(0,0,0,0.4);
-    padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.45);
+    padding: 36px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    width: 320px;
   }
-  h1 {
-    font-size: 28px;
-    margin-bottom: 20px;
-  }
-  p {
-    font-size: 16px;
-    margin-bottom: 30px;
-  }
-  button {
-    background: #ffeb3b;
-    color: #333;
-    font-size: 18px;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-  button:hover {
-    background: #fbc02d;
-    transform: scale(1.05);
-  }
+  h1 { font-size: 20px; margin-bottom: 12px; }
+  p { font-size: 14px; margin-bottom: 18px; color: #f0f7ff; }
   input {
     padding: 10px;
     border-radius: 8px;
     border: none;
-    margin-top: 10px;
-    width: 200px;
-    text-align: center;
+    width: 100%;
+    margin-bottom: 10px;
+    box-sizing: border-box;
   }
-  .msg {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #ffeb3b;
+  button {
+    background: #ffeb3b;
+    color: #333;
+    font-size: 16px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
   }
+  .msg { margin-top: 10px; color: #ffe082; font-size: 13px; min-height: 18px; }
+  .small { font-size: 12px; color: rgba(255,255,255,0.8); margin-top:8px; }
 </style>
 </head>
 <body>
   <div class="container">
-    <h1>Programme d’accompagnement à Sousse</h1>
-    <p>Accès réservé aux membres autorisés.<br>Veuillez entrer le mot de passe pour afficher la carte interactive ! .</p>
-    <input type="password" id="pass" placeholder="Mot de passe">
-    <br>
-    <button onclick="verifierMotDePasse()">🌍 Voir la carte</button>
+    <h1>Programme d’accompagnement — Sousse</h1>
+    <p>Accès réservé. Entrez le mot de passe pour afficher la carte interactive.</p>
+
+    <input id="pass" type="password" placeholder="Mot de passe" autocomplete="off" />
+    <button id="goBtn">🌍 Voir la carte</button>
+
     <div id="msg" class="msg"></div>
+    <div class="small">Protection légère : utile pour empêcher les curieux. Pour une sécurité totale, il faudrait une authentification côté serveur.</div>
   </div>
 
-  <script>
-    function verifierMotDePasse() {
-      const motDePasse = document.getElementById("pass").value.trim();
-      const message = document.getElementById("msg");
+<script>
 
-      // 👉 Tu peux changer ici ton mot de passe
-      const motDePasseCorrect = "sousse2025";
 
-      if (motDePasse === motDePasseCorrect) {
-        window.location.href = "CarteSousse.html";
-      } else {
-        message.textContent = "❌ Mot de passe incorrect.";
-      }
+// hash attendu (hex) — NE PAS mettre le mot de passe en clair ici.
+const EXPECTED_HASH = "b97649803596ed3f11b1a9d7e5cda20a71d198f96f003da6afbd36f92354a62a";
+
+// paramètres limite
+const MAX_ATTEMPTS = 5;
+const LOCK_MINUTES = 5; // durée du blocage après trop d'échecs
+
+const passInput = document.getElementById("pass");
+const goBtn = document.getElementById("goBtn");
+const msgDiv = document.getElementById("msg");
+
+function nowMs(){ return Date.now(); }
+
+function getState(){
+  const raw = localStorage.getItem("auth_state");
+  if(!raw) return { attempts: 0, lockedUntil: 0 };
+  try { return JSON.parse(raw); } catch(e){ return { attempts:0, lockedUntil:0 }; }
+}
+function saveState(st){ localStorage.setItem("auth_state", JSON.stringify(st)); }
+
+// convertir ArrayBuffer -> hex string
+function bufToHex(buffer){
+  const bytes = new Uint8Array(buffer);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
+  return hex;
+}
+
+// calcule SHA-256 d'une chaîne (UTF-8) et retourne hex string
+async function sha256Hex(str){
+  const enc = new TextEncoder();
+  const data = enc.encode(str);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return bufToHex(hashBuffer);
+}
+
+function setMessage(text, danger){
+  msgDiv.textContent = text || "";
+  msgDiv.style.color = danger ? "#ffb3b3" : "#ffe082";
+}
+
+// vérifie le verrouillage et affiche temps restant
+function checkLock(){
+  const st = getState();
+  if(st.lockedUntil && st.lockedUntil > nowMs()){
+    const sec = Math.ceil((st.lockedUntil - nowMs())/1000);
+    setMessage(`Trop de tentatives. Réessayez dans ${sec} s.`, true);
+    return true;
+  } else {
+    // si verrou expiré, reset attempts
+    if(st.lockedUntil && st.lockedUntil <= nowMs()){
+      saveState({ attempts: 0, lockedUntil: 0 });
     }
-  </script>
+    return false;
+  }
+}
+
+goBtn.addEventListener("click", async function(){
+  // désactiver répétition rapide
+  goBtn.disabled = true;
+  setTimeout(()=> goBtn.disabled = false, 800);
+
+  if(checkLock()) return;
+
+  const plain = passInput.value || "";
+  if(plain.trim() === ""){
+    setMessage("Entrez le mot de passe.", true);
+    return;
+  }
+
+  try {
+    const hash = await sha256Hex(plain);
+    if(hash === EXPECTED_HASH){
+      // succès : reset état et redirection
+      saveState({ attempts: 0, lockedUntil: 0 });
+      window.location.href = "CarteSousse.html";
+    } else {
+      // échec : incrémenter tentatives
+      const st = getState();
+      st.attempts = (st.attempts || 0) + 1;
+      if(st.attempts >= MAX_ATTEMPTS){
+        st.lockedUntil = nowMs() + LOCK_MINUTES * 60 * 1000;
+        setMessage(`Mot de passe incorrect. Verrouillage ${LOCK_MINUTES} minutes.`, true);
+      } else {
+        const rest = MAX_ATTEMPTS - st.attempts;
+        setMessage(`Mot de passe incorrect. ${rest} tentative(s) restante(s).`, true);
+      }
+      saveState(st);
+    }
+  } catch (err){
+    console.error(err);
+    setMessage("Erreur interne. Réessayez.", true);
+  }
+});
+</script>
 </body>
 </html>
-

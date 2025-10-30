@@ -136,7 +136,55 @@ goBtn.addEventListener("click", async function(){
     if(hash === EXPECTED_HASH){
       // succès : reset état et redirection
       saveState({ attempts: 0, lockedUntil: 0 });
-      window.location.href = "CarteSousse.html";
+      <script>
+/*
+  - Vérifie le mot de passe via son hash SHA-256
+  - Si correct, crée un token temporaire signé et le sauvegarde dans localStorage
+  - Redirige vers CarteSousse.html
+*/
+
+const EXPECTED_HASH = "b97649803596ed3f11b1a9d7e5cda20a71d198f96f003da6afbd36f92354a62a"; // hash du mot de passe "sousse2025"
+const SECRET = "une_phrase_secrete_peu_complexe"; // la même phrase à mettre aussi dans CarteSousse.html
+const TOKEN_KEY = "site_token";
+
+function bufToHex(buffer){
+  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function sha256Hex(str){
+  const enc = new TextEncoder();
+  const b = await crypto.subtle.digest("SHA-256", enc.encode(str));
+  return bufToHex(b);
+}
+
+document.getElementById("goBtn").addEventListener("click", async function(){
+  const pass = document.getElementById("pass").value.trim();
+  const msgDiv = document.getElementById("msg");
+
+  if(pass === ""){
+    msgDiv.textContent = "⚠️ Veuillez entrer le mot de passe.";
+    msgDiv.style.color = "#ffb3b3";
+    return;
+  }
+
+  const hash = await sha256Hex(pass);
+  if(hash !== EXPECTED_HASH){
+    msgDiv.textContent = "❌ Mot de passe incorrect.";
+    msgDiv.style.color = "#ffb3b3";
+    return;
+  }
+
+  // ✅ Mot de passe correct → création du token sécurisé
+  const expireMs = Date.now() + 20 * 60 * 1000; // expire dans 20 minutes
+  const sig = await sha256Hex(SECRET + "|" + expireMs);
+  const tokenObj = { user: "admin", exp: expireMs, sig: sig };
+  localStorage.setItem(TOKEN_KEY, btoa(JSON.stringify(tokenObj)));
+
+  // Redirection vers la carte
+  window.location.href = "CarteSousse.html";
+});
+</script>
+
     } else {
       // échec : incrémenter tentatives
       const st = getState();
@@ -158,5 +206,6 @@ goBtn.addEventListener("click", async function(){
 </script>
 </body>
 </html>
+
 
 

@@ -1,4 +1,72 @@
 <!DOCTYPE html>
+<!-- Place ceci TOUT EN HAUT de CarteSousse.html, avant tout autre script ou contenu -->
+<script>
+(async function(){
+  // Le SECRET doit être identique à celui utilisé dans index.html
+  const SECRET = "une_phrase_secrete_peu_complexe"; // change si tu veux, doit être identique côté login
+  const TOKEN_KEY = "site_token"; // clé storage
+  const REDIRECT = "index.html"; // page d'accueil
+
+  function bufToHex(buffer){
+    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+  async function sha256Hex(str){
+    const enc = new TextEncoder();
+    const b = await crypto.subtle.digest("SHA-256", enc.encode(str));
+    return bufToHex(b);
+  }
+
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY);
+    if(!raw){
+      // pas de token => rediriger
+      window.location.replace(REDIRECT);
+      return;
+    }
+
+    // decode token (base64 JSON)
+    let obj;
+    try {
+      obj = JSON.parse(atob(raw));
+    } catch(e){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace(REDIRECT);
+      return;
+    }
+
+    // structure attendue: { user, exp, sig }
+    if(!obj.exp || !obj.sig){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace(REDIRECT);
+      return;
+    }
+
+    // expiration
+    if(Date.now() > obj.exp){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace(REDIRECT);
+      return;
+    }
+
+    // vérifier signature
+    const expectedSig = await sha256Hex(SECRET + "|" + obj.exp);
+    if(expectedSig !== obj.sig){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace(REDIRECT);
+      return;
+    }
+
+    // token valide -> on continue et laisse la page se charger
+    // Optionnel : on peut actualiser l'expiration ici (refresh token) si tu veux
+  } catch(err){
+    // en cas d'erreur inattendue, supprimer token et rediriger
+    console.error("Auth check error:", err);
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.replace(REDIRECT);
+  }
+})();
+</script>
+
 <html><head><meta charset='utf-8' />
 <title>Carte AGR</title>
 <link rel='stylesheet' href='https://unpkg.com/leaflet/dist/leaflet.css' />
@@ -71,4 +139,5 @@ all.forEach(x=>{let ageTxt=(x.age=='0'?'Jeune':'Age');
 if((!d||x.d==d)&&(!s||x.s==s)&&(!m||x.m==m)&&(!a||x.a==a)&&(!g||x.g==g)&&(!aj||ageTxt==aj))mc.addLayer(x.mk);});
 if(mc.getLayers().length>0)map.fitBounds(mc.getBounds());updateStats();}
 </script></body></html>
+
 

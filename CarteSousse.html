@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8'/>
+<title>Carte des bénéficiaires - Sousse</title>
+<link rel='stylesheet' href='https://unpkg.com/leaflet/dist/leaflet.css' />
+<script src='https://unpkg.com/leaflet/dist/leaflet.js'></script>
+<style>#map{height:600px;width:100%;}</style></head><body>
+<h3>Carte des bénéficiaires de Sousse</h3>
+<div id='map'></div>
+<script>
+var map = L.map('map').setView([35.8299, 10.6400], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+attribution: 'Données © OpenStreetMap'}).addTo(map);
+L.marker([35.82995, 10.64]).addTo(map).bindPopup('<b>Ahmed</b><br>Producteur de lait');
+L.marker([35.8315, 10.6287]).addTo(map).bindPopup('<b>Fatma</b><br>Éleveuse de chèvres');
+L.marker([35.8268, 10.6362]).addTo(map).bindPopup('<b>Mourad</b><br>Agriculteur');
+L.marker([35.8342, 10.6428]).addTo(map).bindPopup('<b>Leila</b><br>Apicultrice');
+L.marker([35.8306, 10.6459]).addTo(map).bindPopup('<b>Sami</b><br>Vendeur au marché');
+</script></body></html>

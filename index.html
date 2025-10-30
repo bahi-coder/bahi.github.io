@@ -44,15 +44,45 @@
     background: #fbc02d;
     transform: scale(1.05);
   }
+  input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    margin-top: 10px;
+    width: 200px;
+    text-align: center;
+  }
+  .msg {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #ffeb3b;
+  }
 </style>
 </head>
 <body>
   <div class="container">
     <h1>Programme d’accompagnement à Sousse</h1>
-    <p>Suivez les bénéficiaires de votre programme d’insertion économique et sociale.<br>
-    Cliquez ci-dessous pour afficher la carte interactive.</p>
-    <button onclick="window.location.href='CarteSousse.html'">🌍 Voir la carte</button>
+    <p>Accès réservé aux membres autorisés.<br>Veuillez entrer le mot de passe pour afficher la carte interactive.</p>
+    <input type="password" id="pass" placeholder="Mot de passe">
+    <br>
+    <button onclick="verifierMotDePasse()">🌍 Voir la carte</button>
+    <div id="msg" class="msg"></div>
   </div>
+
+  <script>
+    function verifierMotDePasse() {
+      const motDePasse = document.getElementById("pass").value.trim();
+      const message = document.getElementById("msg");
+
+      // 👉 Tu peux changer ici ton mot de passe
+      const motDePasseCorrect = "sousse2025";
+
+      if (motDePasse === motDePasseCorrect) {
+        window.location.href = "CarteSousse.html";
+      } else {
+        message.textContent = "❌ Mot de passe incorrect.";
+      }
+    }
+  </script>
 </body>
 </html>
-

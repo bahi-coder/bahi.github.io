@@ -1,10 +1,57 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta http-equiv="refresh" content="0; URL='carte.html'" />
-<title>Redirection vers la carte</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carte des bénéficiaires - Sousse</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+  }
+  .container {
+    text-align: center;
+    background: rgba(0,0,0,0.4);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+  p {
+    font-size: 16px;
+    margin-bottom: 30px;
+  }
+  button {
+    background: #ffeb3b;
+    color: #333;
+    font-size: 18px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  button:hover {
+    background: #fbc02d;
+    transform: scale(1.05);
+  }
+</style>
 </head>
 <body>
-<p>Redirection automatique vers la carte...</p>
+  <div class="container">
+    <h1>Programme d’accompagnement à Sousse</h1>
+    <p>Suivez les bénéficiaires de votre programme d’insertion économique et sociale.<br>
+    Cliquez ci-dessous pour afficher la carte interactive.</p>
+    <button onclick="window.location.href='carte.html'">🌍 Voir la carte</button>
+  </div>
 </body>
 </html>

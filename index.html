@@ -24,6 +24,26 @@
     100% { background-position: 0% 50%; }
   }
 
+  /* INTRO LOGO */
+  .intro-logo {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 320px;
+    height: auto;
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+    z-index: 9999;
+    animation: introShow 5s ease-in-out forwards;
+    filter: drop-shadow(0 0 25px rgba(0,255,128,0.8));
+  }
+  @keyframes introShow {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotateY(0deg); }
+    30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotateY(180deg); }
+    60% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotateY(360deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8) rotateY(720deg); }
+  }
+
   /* Logo UTSS en fond */
   .background-logo {
     position: absolute;
@@ -64,6 +84,7 @@
     animation: fadeIn 2s ease-in-out forwards;
     z-index: 2;
     transition: all 1s ease;
+    opacity: 0;
   }
   @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.8); }
@@ -174,9 +195,12 @@
 </head>
 <body>
 
+  <!-- INTRO LOGO IESS -->
+  <img src="iess2.png" alt="Logo IESS" class="intro-logo" id="introLogo">
+
   <img src="logo_UTSS.png" alt="Logo UTSS" class="background-logo">
 
-  <div class="container">
+  <div class="container" id="mainContainer">
     <div class="logo-sequence pyramid">
       <img src="A_3D-rendered_digital_logo_features_a_square-shape.png" class="logo3D logo1" alt="Logo 1">
       <img src="A_3D-rendered_digital_image_features_the_logo_of_t.png" class="logo3D logo2" alt="Logo 2">
@@ -190,7 +214,7 @@
     <div id="message" class="msg"></div>
 
     <div class="footer">
-      Powered by Ing ABBASSI Brahim 
+      Powered by Ing. ABBASSI Brahim 
       <img src="https://upload.wikimedia.org/wikipedia/commons/c/ce/Flag_of_Tunisia.svg" alt="Drapeau Tunisien"><br>
       <span style="font-size:13px; opacity:0.8;">© 2025 ABBASSI – Tous droits réservés</span>
     </div>
@@ -205,7 +229,14 @@
   </audio>
 
 <script>
-// Authentification
+/* Attente avant affichage du contenu principal */
+document.getElementById("mainContainer").style.display="none";
+setTimeout(()=>{
+  document.getElementById("introLogo").style.display="none";
+  document.getElementById("mainContainer").style.display="block";
+},5500);
+
+/* Ton code complet ci-dessous inchangé */
 const PASSWORD="utss2025";const TOKEN_KEY="site_token";const SECRET="cle_privee_ultra_simple";
 const MAX_ATTEMPTS=3;const LOCK_MINUTES=2;
 function sha256Hex(str){const enc=new TextEncoder().encode(str);return crypto.subtle.digest("SHA-256",enc).then(b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join(""));}
@@ -223,7 +254,6 @@ const token={user:"admin",exp:exp,sig:sig};localStorage.setItem(TOKEN_KEY,btoa(J
 else{st.attempts=(st.attempts||0)+1;if(st.attempts>=MAX_ATTEMPTS){st.lockedUntil=now+LOCK_MINUTES*60*1000;setMessage(`Trop d'essais. Verrouillage ${LOCK_MINUTES} minutes.`,true);}
 else{const rest=MAX_ATTEMPTS-st.attempts;setMessage(`Mot de passe incorrect. ${rest} tentative(s) restante(s).`,true);}saveState(st);}});
 
-// Inactivité + particules + son
 let inactivityTimer;let particlesActive=false;const sound=document.getElementById("ambientSound");
 function resetTimer(){
 clearTimeout(inactivityTimer);document.body.classList.remove("idle-mode");
@@ -244,7 +274,6 @@ for(let i=0;i<n;i++){const p=document.createElement("div");p.classList.add("part
 const size=Math.random()*8+4;p.style.width=`${size}px`;p.style.height=`${size}px`;p.style.left=`${Math.random()*100}vw`;
 p.style.animationDuration=`${8+Math.random()*6}s`;p.style.animationDelay=`${Math.random()*4}s`;document.body.appendChild(p);}}
   
-// Messages inspirants
 const messages=[
 "🌿 « Investir dans les communautés rurales, c’est nourrir l’avenir. » 🌿",
 "🌾 « Chaque graine accompagnée est une promesse d’autonomie. » 🌾",
@@ -266,4 +295,3 @@ resetTimer=function(){_resetTimer();stopMessageCycle();};
 </script>
 </body>
 </html>
-

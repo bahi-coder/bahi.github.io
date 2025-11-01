@@ -208,8 +208,10 @@
     </div>
 
     <h1>IESS - Kairouan</h1>
-    <p>Veuillez entrer le mot de passe pour accéder à la carte interactive.</p>
-    <input type="password" id="password" placeholder="Mot de passe"><br>
+    <p>Veuillez entrer le code d’accès pour accéder à la carte interactive.</p>
+
+    <!-- Champ nettoyé : text au lieu de password -->
+    <input type="text" id="accessField" placeholder="Code d’accès"><br>
     <button id="loginBtn">🔐 Se connecter</button>
     <div id="message" class="msg"></div>
 
@@ -236,62 +238,93 @@ setTimeout(()=>{
   document.getElementById("mainContainer").style.display="block";
 },5500);
 
-/* Ton code complet ci-dessous inchangé */
-const PASSWORD="utss2025";const TOKEN_KEY="site_token";const SECRET="cle_privee_ultra_simple";
-const MAX_ATTEMPTS=3;const LOCK_MINUTES=2;
-function sha256Hex(str){const enc=new TextEncoder().encode(str);return crypto.subtle.digest("SHA-256",enc).then(b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join(""));}
+/* --- Nettoyage : simplification de l'authentification --- */
+/* On garde setMessage (utilisé plus bas) */
+function setMessage(msg, err=false){
+  const el = document.getElementById("message");
+  el.textContent = msg;
+  el.style.color = err ? "#ff8080" : "#cfff8f";
+}
 
-function nowMs(){return Date.now();}
-function getState(){return JSON.parse(localStorage.getItem("auth_state")||"{}");}
-function saveState(s){localStorage.setItem("auth_state",JSON.stringify(s));}
-function setMessage(msg,err=false){const el=document.getElementById("message");el.textContent=msg;el.style.color=err?"#ff8080":"#cfff8f";}
+/* Remplacement de la logique complexe par une validation simple */
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const val = document.getElementById("accessField").value.trim().toLowerCase();
+  if (val === "utss" || val === "iess") {
+    setMessage("Accès autorisé !");
+    setTimeout(() => { window.location.href = "CarteSousse.html"; }, 700);
+  } else {
+    setMessage("Code invalide.", true);
+  }
+});
 
-document.getElementById("loginBtn").addEventListener("click",async()=>{
-const pwd=document.getElementById("password").value.trim();const st=getState();const now=nowMs();
-if(st.lockedUntil&&now<st.lockedUntil){const diff=Math.ceil((st.lockedUntil-now)/60000);setMessage(`Compte verrouillé. Réessayez dans ${diff} min.`,true);return;}
-if(pwd===PASSWORD){localStorage.removeItem("auth_state");const exp=now+20*60*1000;const sig=await sha256Hex(SECRET+"|"+exp);
-const token={user:"admin",exp:exp,sig:sig};localStorage.setItem(TOKEN_KEY,btoa(JSON.stringify(token)));window.location.href="CarteSousse.html";}
-else{st.attempts=(st.attempts||0)+1;if(st.attempts>=MAX_ATTEMPTS){st.lockedUntil=now+LOCK_MINUTES*60*1000;setMessage(`Trop d'essais. Verrouillage ${LOCK_MINUTES} minutes.`,true);}
-else{const rest=MAX_ATTEMPTS-st.attempts;setMessage(`Mot de passe incorrect. ${rest} tentative(s) restante(s).`,true);}saveState(st);}});
-
-let inactivityTimer;let particlesActive=false;const sound=document.getElementById("ambientSound");
+/* --- Inactivité + particules + son (inchangé) --- */
+let inactivityTimer; let particlesActive=false; const sound=document.getElementById("ambientSound");
 function resetTimer(){
-clearTimeout(inactivityTimer);document.body.classList.remove("idle-mode");
-if(particlesActive){document.querySelectorAll(".particle").forEach(p=>p.remove());particlesActive=false;sound.pause();}
-inactivityTimer=setTimeout(triggerMagic,15000);
+  clearTimeout(inactivityTimer);
+  document.body.classList.remove("idle-mode");
+  if(particlesActive){
+    document.querySelectorAll(".particle").forEach(p=>p.remove());
+    particlesActive=false;
+    sound.pause();
+  }
+  inactivityTimer=setTimeout(triggerMagic,15000);
 }
 function triggerMagic(){
-document.body.classList.add("idle-mode");
-if(!particlesActive){createParticles(60);particlesActive=true;sound.volume=0.4;sound.play();
-const particleInterval=setInterval(()=>{if(!document.body.classList.contains("idle-mode"))clearInterval(particleInterval);
-else createParticles(2+Math.random()*3);},800);}
+  document.body.classList.add("idle-mode");
+  if(!particlesActive){
+    createParticles(60);
+    particlesActive=true;
+    sound.volume=0.4;
+    sound.play().catch(()=>{});
+    const particleInterval=setInterval(()=>{
+      if(!document.body.classList.contains("idle-mode")) clearInterval(particleInterval);
+      else createParticles(2+Math.random()*3);
+    },800);
+  }
 }
-["mousemove","keydown","click"].forEach(evt=>{window.addEventListener(evt,()=>{resetTimer();if(sound.paused){sound.play().catch(()=>{});}});});
+["mousemove","keydown","click"].forEach(evt=>{
+  window.addEventListener(evt,()=>{
+    resetTimer();
+    if(sound.paused){ sound.play().catch(()=>{}); }
+  });
+});
 resetTimer();
 
 function createParticles(n){
-for(let i=0;i<n;i++){const p=document.createElement("div");p.classList.add("particle");
-const size=Math.random()*8+4;p.style.width=`${size}px`;p.style.height=`${size}px`;p.style.left=`${Math.random()*100}vw`;
-p.style.animationDuration=`${8+Math.random()*6}s`;p.style.animationDelay=`${Math.random()*4}s`;document.body.appendChild(p);}}
-  
-const messages=[
-"🌿 « Investir dans les communautés rurales, c’est nourrir l’avenir. » 🌿",
-"🌾 « Chaque graine accompagnée est une promesse d’autonomie. » 🌾",
-"💧 « L’innovation durable commence avec l’humain. » 💧",
-"🌱 « L’union des efforts fait fleurir la terre. » 🌱"];
-let messageIndex=0;let messageInterval=null;
-function startMessageCycle(){
-const el=document.getElementById("idleMessage");if(!el)return;
-el.innerHTML=messages[0];messageIndex=0;
-messageInterval=setInterval(()=>{
-messageIndex=(messageIndex+1)%messages.length;
-el.style.opacity=0;setTimeout(()=>{el.innerHTML=messages[messageIndex];el.style.opacity=1;},1000);
-},9000);
+  for(let i=0;i<n;i++){
+    const p=document.createElement("div");
+    p.classList.add("particle");
+    const size=Math.random()*8+4;
+    p.style.width=`${size}px`;
+    p.style.height=`${size}px`;
+    p.style.left=`${Math.random()*100}vw`;
+    p.style.animationDuration=`${8+Math.random()*6}s`;
+    p.style.animationDelay=`${Math.random()*4}s`;
+    document.body.appendChild(p);
+  }
 }
-function stopMessageCycle(){clearInterval(messageInterval);messageInterval=null;}
-const _triggerMagic=triggerMagic;const _resetTimer=resetTimer;
-triggerMagic=function(){_triggerMagic();startMessageCycle();};
-resetTimer=function(){_resetTimer();stopMessageCycle();};
+
+/* Messages inspirants (inchangé) */
+const messages=[
+  "🌿 « Investir dans les communautés rurales, c’est nourrir l’avenir. » 🌿",
+  "🌾 « Chaque graine accompagnée est une promesse d’autonomie. » 🌾",
+  "💧 « L’innovation durable commence avec l’humain. » 💧",
+  "🌱 « L’union des efforts fait fleurir la terre. » 🌱"
+];
+let messageIndex=0; let messageInterval=null;
+function startMessageCycle(){
+  const el=document.getElementById("idleMessage"); if(!el) return;
+  el.innerHTML = messages[0]; messageIndex=0;
+  messageInterval=setInterval(()=>{
+    messageIndex=(messageIndex+1)%messages.length;
+    el.style.opacity=0;
+    setTimeout(()=>{ el.innerHTML = messages[messageIndex]; el.style.opacity=1; }, 1000);
+  }, 9000);
+}
+function stopMessageCycle(){ clearInterval(messageInterval); messageInterval=null; }
+const _triggerMagic = triggerMagic; const _resetTimer = resetTimer;
+triggerMagic = function(){ _triggerMagic(); startMessageCycle(); };
+resetTimer = function(){ _resetTimer(); stopMessageCycle(); };
 </script>
 </body>
 </html>
